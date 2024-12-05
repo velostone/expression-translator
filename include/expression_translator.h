@@ -21,8 +21,8 @@ public:
 class Number : public Term
 {
 	double value;
-	char get_op() const noexcept { return 0; };
-	size_t get_priority() const noexcept { return 0; };
+	char get_op() const noexcept { return 0; }
+	size_t get_priority() const noexcept { return 0; }
 public:
 	double get_value() const noexcept { return value; }
 	Number(double _value) : value(_value) { type = number; }
@@ -31,7 +31,7 @@ public:
 class Operation : public Term
 {
 	char op;
-	double get_value() const noexcept { return 0; };
+	double get_value() const noexcept { return 0; }
 	size_t priority;
 public:
 	char get_op() const noexcept { return op; }
@@ -46,72 +46,74 @@ public:
 class OpenBracket : public Term
 {
 	char bracket;
-	char get_op() const noexcept { return bracket; };
-	double get_value() const noexcept { return 0; };
-	size_t get_priority() const noexcept { return 1; };
+	double get_value() const noexcept { return 0; }
+	size_t get_priority() const noexcept { return 0; }
 public:
+	char get_op() const noexcept { return bracket; }
 	OpenBracket() : bracket('(') { type = open_bracket; }
 };
 
 class CloseBracket : public Term
 {
 	char bracket;
-	char get_op() const noexcept { return bracket; };
-	double get_value() const noexcept { return 0; };
-	size_t get_priority() const noexcept { return 1; };
+	double get_value() const noexcept { return 0; }
+	size_t get_priority() const noexcept { return 0; }
 public:
+	char get_op() const noexcept { return bracket; }
 	CloseBracket() : bracket(')') { type = close_bracket; }
 };
 
 class Translator : private Term
 {
-	char get_op() const noexcept { return 0; };
-	double get_value() const noexcept { return 0; };
-	size_t get_priority() const noexcept { return 0; };
+	char get_op() const noexcept { return 0; }
+	double get_value() const noexcept { return 0; }
+	size_t get_priority() const noexcept { return 0; }
 	using Term::types;
 	TVector<Term*> terms;
 	TVector<Term*> polish_notation;
+	std::string expression;
 public:
-	void tokenizer(std::string str)
+	Translator(std::string _expression = "2+2*2") : expression(_expression) { }
+	void tokenizer()
 	{
 		std::string N;
 		size_t number_status = 0;
-		for (size_t i = 0; i < str.size(); ++i)
+		for (size_t i = 0; i < expression.size(); ++i)
 		{
 			if (!number_status)
 			{
-				if (str[i] == '(')
+				if (expression[i] == '(')
 					terms.push_back(new OpenBracket);
-				else if (str[i] == '*' || str[i] == '/' || str[i] == '+' || str[i] == '-')
-					terms.push_back(new Operation(str[i]));
-				else if (str[i] == ')')
+				else if (expression[i] == '*' || expression[i] == '/' || expression[i] == '+' || expression[i] == '-')
+					terms.push_back(new Operation(expression[i]));
+				else if (expression[i] == ')')
 					terms.push_back(new CloseBracket);
-				else if (str[i] >= 48 && str[i] <= 57 || str[i] == '.')
+				else if (expression[i] >= 48 && expression[i] <= 57 || expression[i] == '.')
 				{
 					number_status = 1;
-					N += str[i];
+					N += expression[i];
 				}
 				else throw std::logic_error("Invalid syntax!");
 			}
 			else
 			{
-				if (str[i] >= 48 && str[i] <= 57 || str[i] == '.')
-					N += str[i];
-				else if (str[i] == '(')
+				if (expression[i] >= 48 && expression[i] <= 57 || expression[i] == '.')
+					N += expression[i];
+				else if (expression[i] == '(')
 				{
 					number_status = 0;
 					terms.push_back(new Number(std::stod(N)));
 					terms.push_back(new OpenBracket);
 					N.clear();
 				}
-				else if (str[i] == '*' || str[i] == '/' || str[i] == '+' || str[i] == '-')
+				else if (expression[i] == '*' || expression[i] == '/' || expression[i] == '+' || expression[i] == '-')
 				{
 					number_status = 0;
 					terms.push_back(new Number(std::stod(N)));
-					terms.push_back(new Operation(str[i]));
+					terms.push_back(new Operation(expression[i]));
 					N.clear();
 				}
-				else if (str[i] == ')')
+				else if (expression[i] == ')')
 				{
 					number_status = 0;
 					terms.push_back(new Number(std::stod(N)));
@@ -124,7 +126,10 @@ public:
 		if (!(N[0] == '\0'))
 			terms.push_back(new Number(std::stod(N)));
 	}
-	void get_expression()
+	size_t get_terms_size() const noexcept { return terms.size(); }
+	size_t get_expression_size() const noexcept { return expression.size(); }
+	std::string get_expression() const noexcept { return expression; }
+	void print_expression()
 	{
 		size_t sz = terms.size();
 		for (size_t i = 0; i < sz; ++i)
@@ -225,7 +230,24 @@ public:
 			st.pop();
 		}
 	}
-	void get_polish_notation()
+	std::string get_polish_notation() 
+	{
+		std::string polish_notation_str;
+		size_t sz = polish_notation.size();
+		for (size_t i = 0; i < sz; ++i)
+		{
+			if (polish_notation[i]->get_type() == number)
+			{
+				std::string num = std::to_string(polish_notation[i]->get_value());
+				num.erase(num.find_last_not_of('0') + 1, std::string::npos);
+				num.erase(num.find_last_not_of('.') + 1, std::string::npos);
+				polish_notation_str += num;
+			}
+			else  polish_notation_str += polish_notation[i]->get_op();
+		}
+		return polish_notation_str;
+	}
+	void print_polish_notation()
 	{
 		size_t sz = polish_notation.size();
 		for (size_t i = 0; i < sz; ++i)
@@ -273,5 +295,12 @@ public:
 			}
 		}
 		return st.top();
+	}
+	double calculate()
+	{
+		this->tokenizer();
+		this->parser();
+		this->converter();
+		return this->calculator();
 	}
 };
