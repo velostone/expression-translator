@@ -120,6 +120,13 @@ TEST(Translator, throws_then_parse_non_correctly_brackets_expression)
 	ASSERT_ANY_THROW(T.parser());
 }
 
+TEST(Translator, throws_then_parse_non_correctly_brackets_order_expression)
+{
+	Translator T("23+46)+(4*4)-(7+8");
+	T.tokenizer();
+	ASSERT_ANY_THROW(T.parser());
+}
+
 TEST(Translator, throws_then_parse_non_correctly_first_symbol_expression)
 {
 	Translator T(")23+46+(4*4)");

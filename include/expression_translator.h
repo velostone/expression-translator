@@ -5,24 +5,21 @@
 #include <string>
 #include "tstack.h"
 
+enum types { number, operation, open_bracket, close_bracket };
+
 class Term
 {
+	virtual void foo() { }
 protected:
-	enum types { number, operation, open_bracket, close_bracket };
 	std::map<char, size_t> pritorities{ {'*', 2}, {'/', 2}, {'+', 1}, {'-', 1} };
 	types type;
 public:
 	types get_type() const noexcept { return type; }
-	virtual double get_value() const noexcept = 0;
-	virtual char get_op() const noexcept = 0;
-	virtual size_t get_priority() const noexcept = 0;
 };
 
 class Number : public Term
 {
 	double value;
-	char get_op() const noexcept { return 0; }
-	size_t get_priority() const noexcept { return 0; }
 public:
 	double get_value() const noexcept { return value; }
 	Number(double _value) : value(_value) { type = number; }
@@ -31,7 +28,6 @@ public:
 class Operation : public Term
 {
 	char op;
-	double get_value() const noexcept { return 0; }
 	size_t priority;
 public:
 	char get_op() const noexcept { return op; }
@@ -46,8 +42,6 @@ public:
 class OpenBracket : public Term
 {
 	char bracket;
-	double get_value() const noexcept { return 0; }
-	size_t get_priority() const noexcept { return 0; }
 public:
 	char get_op() const noexcept { return bracket; }
 	OpenBracket() : bracket('(') { type = open_bracket; }
@@ -56,24 +50,24 @@ public:
 class CloseBracket : public Term
 {
 	char bracket;
-	double get_value() const noexcept { return 0; }
-	size_t get_priority() const noexcept { return 0; }
 public:
 	char get_op() const noexcept { return bracket; }
 	CloseBracket() : bracket(')') { type = close_bracket; }
 };
 
-class Translator : private Term
+class Translator
 {
-	char get_op() const noexcept { return 0; }
-	double get_value() const noexcept { return 0; }
-	size_t get_priority() const noexcept { return 0; }
-	using Term::types;
 	TVector<Term*> terms;
 	TVector<Term*> polish_notation;
 	std::string expression;
 public:
 	Translator(std::string _expression = "2+2*2") : expression(_expression) { }
+	~Translator() 
+	{
+		size_t sz = terms.size();
+		for (size_t i = 0; i < sz; ++i)
+			delete terms[i];
+	}
 	void tokenizer()
 	{
 		std::string N;
@@ -88,7 +82,7 @@ public:
 					terms.push_back(new Operation(expression[i]));
 				else if (expression[i] == ')')
 					terms.push_back(new CloseBracket);
-				else if (expression[i] >= 48 && expression[i] <= 57 || expression[i] == '.')
+				else if (expression[i] >= '0' && expression[i] <= '9' || expression[i] == '.')
 				{
 					number_status = 1;
 					N += expression[i];
@@ -97,7 +91,7 @@ public:
 			}
 			else
 			{
-				if (expression[i] >= 48 && expression[i] <= 57 || expression[i] == '.')
+				if (expression[i] >= '0' && expression[i] <= '9' || expression[i] == '.')
 					N += expression[i];
 				else if (expression[i] == '(')
 				{
@@ -123,7 +117,7 @@ public:
 				else throw std::logic_error("Invalid syntax!");
 			}
 		}
-		if (!(N[0] == '\0'))
+		if (!N.empty())
 			terms.push_back(new Number(std::stod(N)));
 	}
 	size_t get_terms_size() const noexcept { return terms.size(); }
@@ -131,12 +125,10 @@ public:
 	std::string get_expression() const noexcept { return expression; }
 	void print_expression()
 	{
-		size_t sz = terms.size();
+		size_t sz = expression.size();
 		for (size_t i = 0; i < sz; ++i)
 		{
-			if (terms[i]->get_type() == number)
-				std::cout << terms[i]->get_value();
-			else std::cout << terms[i]->get_op();
+			std::cout << expression[i];
 		}
 		std::cout << std::endl;
 	}
@@ -144,22 +136,23 @@ public:
 	{
 		std::map<types, size_t> states{ {number, 0}, {operation, 1}, {open_bracket, 2}, {close_bracket, 3} };
 		size_t state;
-		size_t open_counter = 0;
-		size_t close_counter = 0;
+		Stack<char> stack;
 		size_t sz = terms.size();
 		state = states[terms[0]->get_type()];
 		if (state == 1)
 			throw std::logic_error("Operation can't be the first symbol!");
 		if (state == 2)
-			++open_counter;
+			stack.push('(');
 		if (state == 3)
 			throw std::logic_error("')' can't be the first symbol!");
 		for (size_t i = 1; i < sz; ++i)
 		{
 			if (terms[i]->get_type() == open_bracket)
-				++open_counter;
+				stack.push('(');
 			else if (terms[i]->get_type() == close_bracket)
-				++close_counter;
+				if (!stack.isEmpty())
+					stack.pop();
+				else throw std::logic_error("Incorrect brackets!");
 			switch (state)
 			{
 			case 0:
@@ -187,8 +180,8 @@ public:
 		state = states[terms[sz - 1]->get_type()];
 		if (state == 1 || state == 2)
 			throw std::logic_error("Invalid syntax!");
-		if (open_counter != close_counter)
-			throw std::logic_error("Invalid syntax!");
+		if (!stack.isEmpty())
+			throw std::logic_error("Incorrect brackets!");
 	}
 	void converter()
 	{
@@ -204,7 +197,8 @@ public:
 					st.push(terms[i]);
 				else
 				{
-					while (!st.isEmpty() && st.top()->get_type() == operation && terms[i]->get_priority() <= st.top()->get_priority())
+					while (!st.isEmpty() && st.top()->get_type() == operation && \
+						dynamic_cast<Operation*>(terms[i])->get_priority() <= dynamic_cast<Operation*>(st.top())->get_priority())
 					{
 						polish_notation.push_back(st.top());
 						st.pop();
@@ -238,12 +232,12 @@ public:
 		{
 			if (polish_notation[i]->get_type() == number)
 			{
-				std::string num = std::to_string(polish_notation[i]->get_value());
+				std::string num = std::to_string(dynamic_cast<Number*>(polish_notation[i])->get_value());
 				num.erase(num.find_last_not_of('0') + 1, std::string::npos);
 				num.erase(num.find_last_not_of('.') + 1, std::string::npos);
 				polish_notation_str += num;
 			}
-			else  polish_notation_str += polish_notation[i]->get_op();
+			else  polish_notation_str += dynamic_cast<Operation*>(polish_notation[i])->get_op();
 		}
 		return polish_notation_str;
 	}
@@ -253,8 +247,8 @@ public:
 		for (size_t i = 0; i < sz; ++i)
 		{
 			if (polish_notation[i]->get_type() == number)
-				std::cout << polish_notation[i]->get_value();
-			else std::cout << polish_notation[i]->get_op();
+				std::cout << dynamic_cast<Number*>(polish_notation[i])->get_value();
+			else std::cout << dynamic_cast<Operation*>(polish_notation[i])->get_op();
 		}
 		std::cout << std::endl;
 	}
@@ -268,14 +262,14 @@ public:
 		{
 			current_type = polish_notation[i]->get_type();
 			if (current_type == number)
-				st.push(polish_notation[i]->get_value());
+				st.push(dynamic_cast<Number*>(polish_notation[i])->get_value());
 			else
 			{
 				right_numb = st.top();
 				st.pop();
 				left_numb = st.top();
 				st.pop();
-				switch (polish_notation[i]->get_op())
+				switch (dynamic_cast<Operation*>(polish_notation[i])->get_op())
 				{
 				case '*':
 					st.push(left_numb * right_numb);
