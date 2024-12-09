@@ -9,7 +9,6 @@ enum types { number, operation, open_bracket, close_bracket };
 
 class Term
 {
-	virtual void foo() { }
 protected:
 	std::map<char, size_t> pritorities{ {'*', 2}, {'/', 2}, {'+', 1}, {'-', 1} };
 	types type;
@@ -198,7 +197,7 @@ public:
 				else
 				{
 					while (!st.isEmpty() && st.top()->get_type() == operation && \
-						dynamic_cast<Operation*>(terms[i])->get_priority() <= dynamic_cast<Operation*>(st.top())->get_priority())
+						static_cast<Operation*>(terms[i])->get_priority() <= static_cast<Operation*>(st.top())->get_priority())
 					{
 						polish_notation.push_back(st.top());
 						st.pop();
@@ -232,12 +231,12 @@ public:
 		{
 			if (polish_notation[i]->get_type() == number)
 			{
-				std::string num = std::to_string(dynamic_cast<Number*>(polish_notation[i])->get_value());
+				std::string num = std::to_string(static_cast<Number*>(polish_notation[i])->get_value());
 				num.erase(num.find_last_not_of('0') + 1, std::string::npos);
 				num.erase(num.find_last_not_of('.') + 1, std::string::npos);
 				polish_notation_str += num;
 			}
-			else  polish_notation_str += dynamic_cast<Operation*>(polish_notation[i])->get_op();
+			else  polish_notation_str += static_cast<Operation*>(polish_notation[i])->get_op();
 		}
 		return polish_notation_str;
 	}
@@ -247,8 +246,8 @@ public:
 		for (size_t i = 0; i < sz; ++i)
 		{
 			if (polish_notation[i]->get_type() == number)
-				std::cout << dynamic_cast<Number*>(polish_notation[i])->get_value();
-			else std::cout << dynamic_cast<Operation*>(polish_notation[i])->get_op();
+				std::cout << static_cast<Number*>(polish_notation[i])->get_value();
+			else std::cout << static_cast<Operation*>(polish_notation[i])->get_op();
 		}
 		std::cout << std::endl;
 	}
@@ -262,14 +261,14 @@ public:
 		{
 			current_type = polish_notation[i]->get_type();
 			if (current_type == number)
-				st.push(dynamic_cast<Number*>(polish_notation[i])->get_value());
+				st.push(static_cast<Number*>(polish_notation[i])->get_value());
 			else
 			{
 				right_numb = st.top();
 				st.pop();
 				left_numb = st.top();
 				st.pop();
-				switch (dynamic_cast<Operation*>(polish_notation[i])->get_op())
+				switch (static_cast<Operation*>(polish_notation[i])->get_op())
 				{
 				case '*':
 					st.push(left_numb * right_numb);
